@@ -33,14 +33,15 @@ Flash Attention is a **fast, memory-efficient, and exact** method that overcomes
 | **Integration**      | Often integrated with GPUs        | Often integrated with CPUs   | Separate modules on the motherboard |
 | **Access Speed**    | Fast                               | Very fast                   | Moderate |
 
-## Mechanism  
+## Mechanism
+Flash Attention leverages **SRAM speed** while keeping memory usage low.
+![Flash attention](images/flashattn_banner.jpg)
 
-Flash Attention leverages **SRAM speed** while keeping memory usage low.  
 
 ### Attention Computation Steps:  
-1. **Score Calculation:** $ S = QK^T $
-2. **Softmax Application:** $A = \text{softmax}(S) $  
-3. **Output Computation:** $O = AV $
+1. **Score Calculation:** $S = QK^T$
+2. **Softmax Application:** $A = \text{softmax}(S)$  
+3. **Output Computation:** $O = AV$
 
 ### How Flash Attention Works  
 Instead of computing attention in a memory-heavy way, Flash Attention reduces memory usage through **tiling** and efficient memory access patterns.  
@@ -54,5 +55,3 @@ It computes the output in a recursive manner, reducing memory usage.
 ## Conclusion  
 
 Flash Attention is a novel approach to computing attention more efficiently by processing data in a **streaming manner**. It significantly reduces memory requirements while maintaining accuracy.  
-
-![Flash attention](images/flashattn_banner.jpg)
