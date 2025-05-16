@@ -24,11 +24,13 @@ The training corpus is a combination of the BooksCorpus (800M words) and English
 - embedding size: 768
 - layers: 12
 - attention heads: 12
+  
 Total parameters: 110M
 ### BERT-large:
 - embedding size: 1024
 - layers: 24
 - attention heads: 16
+
 Total parameters: 345M
 
 The input sequence length is 512 tokens. This is due to the positional encoding, which is limited to 512 tokens.
@@ -88,7 +90,10 @@ The architecture of the model is designed to be hardware-aware, meaning that it 
 - layers: 22
 - attention heads: 12
 
+Total parameters: 149M
 ### ModernBERT-large:
 - embedding size: 1024
 - layers: 28
 - attention heads: 16
+
+Total parameters: 395M
