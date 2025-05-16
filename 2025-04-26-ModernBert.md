@@ -77,7 +77,7 @@ The architecture of the model is designed to be hardware-aware, meaning that it 
 2. Hardware Efficiency: Model dimensions need to align well with GPU hardware for maximum performance, and different target GPUs result in different constraints.
 
 ## Training
-**Tokenizer**: used the BPE tokenizer with a vocabulary size of 50304. This number does have an impact on the performance of the model, Karpathy found that the optimal vocabulary size that going from 50257 to 50304 which is the nearest multiple of 64 yields a 25% performance improvement.
+**Tokenizer**: used the BPE tokenizer with a vocabulary size of 50368. This number does have an impact on the performance of the model, Karpathy found that the optimal vocabulary size that going from 50257 to 50304 which is the nearest multiple of 64 yields a 25% performance improvement for nanoGPT.
 
 **Data**: 2 trillion tokens of text data, including primarily English data from a variety of data sources, including web documents, code, and scientific literature.
 
