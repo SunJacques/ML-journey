@@ -1,0 +1,182 @@
+name: Update Supabase Database
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Allow manual trigger
+  schedule:
+    - cron: '0 */6 * * *' # Run every 6 hours to check for updates in ML-journey
+
+jobs:
+  update-database:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout current repository for dependencies
+      uses: actions/checkout@v4
+      with:
+        path: current-repo
+        
+    - name: Checkout ML-journey repository
+      uses: actions/checkout@v4
+      with:
+        repository: SunJacques/ML-journey
+        path: ml-journey-repo
+        token: ${{ secrets.GITHUB_TOKEN }}
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies directly
+      run: |
+        npm install @supabase/supabase-js gray-matter
+        
+    - name: Update database
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: |
+        node << 'EOF'
+        const { createClient } = require('@supabase/supabase-js');
+        const fs = require('fs');
+        const path = require('path');
+        const matter = require('gray-matter');
+        
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const githubRepo = process.env.GITHUB_REPOSITORY;
+        
+        if (!supabaseUrl || !supabaseKey) {
+          console.error('Missing Supabase credentials');
+          process.exit(1);
+        }
+        
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        async function processRepository(repoPath, owner, repo) {
+          try {
+            // Get all markdown files in the repository
+            const files = fs.readdirSync(repoPath)
+              .filter(file => file.endsWith('.md') && file !== 'README.md');
+            
+            console.log(`\n📁 Processing ${owner}/${repo}`);
+            console.log(`Found ${files.length} markdown files to process`);
+            
+            for (const file of files) {
+              const filePath = path.join(repoPath, file);
+              const content = fs.readFileSync(filePath, 'utf8');
+              
+              // Parse frontmatter
+              const { data: frontmatter, content: markdownContent } = matter(content);
+              
+              // Process images in content - convert relative paths to GitHub URLs
+              const processedContent = markdownContent
+                .replace(
+                  /!\[([^\]]*)\]\(images\/([^)]+)\)/g,
+                  `![$1](https://raw.githubusercontent.com/${owner}/${repo}/main/images/$2)`
+                )
+                .replace(
+                  /src="images\/([^"]+)"/g,
+                  `src="https://raw.githubusercontent.com/${owner}/${repo}/main/images/$1"`
+                );
+              
+              // Extract images from processed content (both markdown and HTML)
+              const markdownImageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+              const htmlImageRegex = /<img[^>]+src="([^"]+)"[^>]*(?:alt="([^"]*)")?[^>]*>/g;
+              const images = [];
+              let match;
+              
+              // Extract markdown images
+              while ((match = markdownImageRegex.exec(processedContent)) !== null) {
+                images.push({
+                  url: match[2],
+                  alt: match[1] || '',
+                  type: 'markdown',
+                  extracted_at: new Date().toISOString()
+                });
+              }
+              
+              // Extract HTML images
+              while ((match = htmlImageRegex.exec(processedContent)) !== null) {
+                images.push({
+                  url: match[1],
+                  alt: match[2] || '',
+                  type: 'html',
+                  extracted_at: new Date().toISOString()
+                });
+              }
+              
+              // Process thumbnail from frontmatter
+              let thumbnailUrl = null;
+              if (frontmatter.thumbnail) {
+                // Convert relative path to GitHub URL
+                thumbnailUrl = frontmatter.thumbnail.startsWith('images/') 
+                  ? `https://raw.githubusercontent.com/${owner}/${repo}/main/${frontmatter.thumbnail}`
+                  : frontmatter.thumbnail;
+              } else if (images.length > 0) {
+                // Fallback to first image if no thumbnail specified
+                thumbnailUrl = images[0].url;
+              }
+
+              // Prepare paper data
+              const paperData = {
+                path: file,
+                title: frontmatter.title || file.replace('.md', ''),
+                content: processedContent,
+                created_at: frontmatter.date || null,
+                meta: {
+                  ...frontmatter,
+                  link: frontmatter.Link || frontmatter.link || null,
+                  skills: frontmatter.skills || null,
+                  tags: frontmatter.tags || frontmatter.skills || null,
+                  images_provided: true
+                },
+                images: images,
+                thumbnail_url: thumbnailUrl
+              };
+              
+              // Upsert to database
+              const { data, error } = await supabase
+                .from('papers')
+                .upsert(paperData, {
+                  onConflict: 'path',
+                  ignoreDuplicates: false
+                })
+                .select();
+              
+              if (error) {
+                console.error(`Error upserting ${file}:`, error);
+              } else {
+                console.log(`✅ Successfully processed ${file}`);
+                console.log(`   - Title: ${paperData.title}`);
+                console.log(`   - Images: ${images.length}`);
+                console.log(`   - Thumbnail: ${paperData.thumbnail_url ? '✓' : '✗'}`);
+              }
+            }
+            
+            console.log(`🎉 Completed processing ${owner}/${repo}!`);
+            
+          } catch (error) {
+            console.error(`Error processing ${owner}/${repo}:`, error);
+            throw error;
+          }
+        }
+        
+        async function processAllRepositories() {
+          try {
+            // Process ML-journey repository
+            await processRepository('ml-journey-repo', 'SunJacques', 'ML-journey');
+            
+            console.log('\n🚀 ML-journey repository processed successfully!');
+            
+          } catch (error) {
+            console.error('Error processing ML-journey repository:', error);
+            process.exit(1);
+          }
+        }
+        
+        processAllRepositories();
+        EOF
