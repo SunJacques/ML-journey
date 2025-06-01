@@ -36,10 +36,33 @@ Total parameters: 345M
 The input sequence length is 512 tokens. This is due to the positional encoding, which is limited to 512 tokens.
 
 ## BERT Variants:
-- DistilBERT: A smaller, faster, and lighter version of BERT that retains 97% of its language understanding while being 60% faster and 40% smaller.
-- RoBERTa: A robustly optimized version of BERT that removes the NSP objective and trains with much larger mini-batches and learning rates.
-- ALBERT: Replaced NSP by Sentence Order Prediction (SOP), and factorized embedding parameterization to reduce the number of parameters.
-- ELECTRA: Replaces the masked language model with a generator-discriminator setup, where a small generator model generates corrupted tokens and a larger discriminator model predicts whether each token is real or fake.
+### RoBERTa 7/2019
+
+- BERT was undertrained on 3.3B words (16GB data), RoBERTa trained on 25B-30B tokens (160GB data)
+- NSP is not useful, removing it improves downstream task
+- Larger batch size increase the perplexity
+- Dynamic masking: different masking for each input fed into the model
+- Vocabulary size: 50k
+- Batch: 8k
+
+### DeBERTa 6/2020
+- Use disentangle attention mechanism, each input is represented using two vectors one for content and the other for the position
+- Enhanced Mask Decoder, add position information before the softmax operation to predict masked token. 
+- Adversarial training: Scale-invariant-Fine-Tuning(SiFT), adds perturbation in the word embedding after a normalization layer. The goal is to keep the same output distribution in a task-specific perturbation
+- vocabulary size: 128K
+- Batch: 2k
+
+### MosaicBERT 12/2023
+- FlashAttention
+- Attention with Linear Biases(ALiBi), remove the positional encoding, add a negative bias on the attention scores that grows with the absolute distance between tokens weighted by a slope m. m follows a geometric sequence each head has ratio of 2^(-8/n) where n is the total number of heads
+
+-> Allows to increase context length during inference or finetuning
+- Gated Linear Units (GLU 2016) combined with Gaussian-error Linear Unit (GeLU) → GeGLU
+- Unpadding
+- MLM Masking ratio and Dropout: 30%, 0.1 dropout to the feedforward
+- Mixed precision: bfloat16 for layerNorm
+- Vocabulary size: 30,528 multiple of 64
+- Batch: gbs=4096, mbs=128 on sequence of size 128
 
 # ModernBERT
 ## Introduction

@@ -34,7 +34,7 @@ Flash Attention is a **fast, memory-efficient, and exact** method that overcomes
 | **Access Speed**    | Fast                               | Very fast                   | Moderate |
 
 ## Mechanism
-Flash Attention leverages **SRAM speed** while keeping memory usage low.
+Flash Attention start with the simple observation that the attention mechanism can be computed in a **streaming manner** writing custom CUDA kernels (fused kernels) that compute the attention in a way that reduces the communication between the HBM and the **SRAM**.
 ![Flash attention](images/flashattn_banner.jpg)
 
 
@@ -44,7 +44,7 @@ Flash Attention leverages **SRAM speed** while keeping memory usage low.
 3. **Output Computation:** $O = AV$
 
 ### How Flash Attention Works  
-Instead of computing attention in a memory-heavy way, Flash Attention reduces memory usage through **tiling** and efficient memory access patterns.  
+Instead of computing attention in a memory-heavy way, Flash Attention reduces memory usage through **tiling** and **streaming**. It processes the input in smaller chunks, allowing it to fit into the limited SRAM while still performing the full attention computation.
 
 #### Key Optimizations  
 - **Safe Softmax:** Prevents numerical overflow by subtracting the maximum value before exponentiation.  
